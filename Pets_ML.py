@@ -14,7 +14,7 @@ What this script does:
 Usage:
   python pets_ml_model.py   (expects ./data and writes outputs to ./results)
 
-Snapshot: starts 11 Nov 2026
+Snapshot: strats 11 Nov 2026
 
   data/prices_monthly.csv   Month-end total returns (pets_tr = PETS.L, midd_tr =
                             iShares FTSE 250 UCITS ETF MIDD.L), FTSE 250 price
