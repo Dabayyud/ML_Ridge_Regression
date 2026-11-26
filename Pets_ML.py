@@ -14,7 +14,7 @@ What this script does:
 Usage:
   python pets_ml_model.py   (expects ./data and writes outputs to ./results)
 
-Snapshot: strats 11 Nov 2026
+Snapshot: starts 11 Nov 2026
 
   data/prices_monthly.csv   Month-end total returns (pets_tr = PETS.L, midd_tr =
                             iShares FTSE 250 UCITS ETF MIDD.L), FTSE 250 price
@@ -46,7 +46,7 @@ OUT.mkdir(exist_ok=True)  # make sure output folder exists before saving csv/jso
 LAST_FULL_MONTH = "2026-10"      # Nov 2026 is incomplete in the data snapshot
 START = 60                       # Minimum training months before first OOS forecast
 ALPHAS = np.logspace(-2, 4, 30)  # Candidate Ridge penalties searched via CV
-COST = 0.005                     # Round-trip trading cost (50 bps) in the backtest
+COST = 0.005                     # 0.5% round-trip cost (0.25% / half charged per switch)
 
 # Key UK CMA veterinary market review / investigation dates (month of release)
 # CMA: The UK's regulator for competition mergers & consumer protection.
@@ -219,7 +219,7 @@ def backtest(res, col="model", cost=COST):
     """Simple long-PETS vs long-FTSE-250 rule driven by positive predicted excess return.
 
     Holding the benchmark gives 0 excess return by construction. Each switch (entering
-    or exiting PETS) pays half the round-trip transaction cost.
+    or exiting PETS) pays half the round-trip transaction cost (0.25% per switch when COST=0.005).
     """
     pos = (res[col] > 0).astype(float)  # 1.0 = PETS, 0.0 = FTSE 250 benchmark
     switches = pos.diff().abs().fillna(pos.iloc[0])
@@ -227,6 +227,8 @@ def backtest(res, col="model", cost=COST):
 
     ann_ir = lambda s: (s.mean() / s.std()) * np.sqrt(12) if s.std() > 0 else np.nan
     metrics = {
+        "round_trip_cost": cost,
+        "per_switch_cost": cost / 2,
         "strategy_cum_excess": strat.sum(),
         "always_pets_cum_excess": res["actual"].sum(),
         "strategy_info_ratio": ann_ir(strat),
@@ -244,6 +246,7 @@ def summary(res):
     dm_stat, dm_p = dm_test(res)
     cw_stat, cw_p = cw_test(res)
     boot_lo, boot_hi = bootstrap_r2(res)
+    n_at_max_alpha = int(np.isclose(res["alpha"], ALPHAS.max(), rtol=0, atol=1e-12).sum())
 
     return {
         "n_oos": len(res),
@@ -266,6 +269,9 @@ def summary(res):
         "cw_stat": cw_stat,
         "cw_p": cw_p,
         "median_alpha": res["alpha"].median(),
+        "max_alpha": float(ALPHAS.max()),
+        "windows_at_max_alpha": n_at_max_alpha,
+        "forecast_sd": float(res["model"].std()),
     }
 
 
@@ -289,7 +295,11 @@ def main():
     res, coef_path = walk_forward(train, FEATURES, keep_coefs=True)
     S = summary(res)
     bt, strat = backtest(res)
-    res.assign(strategy=strat).to_csv(OUT / "walk_forward_forecasts.csv")
+
+    # Save dated walk-forward forecast table explicitly with target_month column
+    forecast_table = res.assign(strategy=strat).copy()
+    forecast_table.insert(0, "target_month", forecast_table.index.astype(str))
+    forecast_table.to_csv(OUT / "walk_forward_forecasts.csv", index=False)
     coef_path.to_csv(OUT / "coefficient_path.csv")
 
     # 2. Robustness checks (varying one design choice at a time), intervals + lasso 
@@ -324,6 +334,8 @@ def main():
     F = {
         "forecast_month": str(latest.index[0] + 1),
         "forecast_excess": fc,
+        "forecast_sd": float(res["model"].std()),
+        "windows_at_max_alpha": S["windows_at_max_alpha"],
         "final_alpha": final[-1].alpha_,
         "intercept": final[-1].intercept_,
         # Annualise the average of the last 5 OOS forecasts plus the new forecast
@@ -378,9 +390,16 @@ def main():
         f"Diebold-Mariano    stat {S['dm_stat']:.2f}  p {S['dm_p']:.3f}"
         f"     Clark-West  stat {S['cw_stat']:.2f}  p {S['cw_p']:.3f}"
     )
-    print(f"Median Ridge penalty chosen: {S['median_alpha']:.1f}")
+    print(
+        f"Median Ridge penalty chosen: {S['median_alpha']:.1f}   "
+        f"(at max {S['max_alpha']:.1f}: {S['windows_at_max_alpha']}/{S['n_oos']} windows)"
+    )
+    print(f"Forecast st. dev. (OOS Ridge predictions): {pct(S['forecast_sd'])}")
 
-    print("\nBacktest:", {k: round(v, 3) for k, v in bt.items()})
+    print(
+        f"\nBacktest (round-trip cost {COST * 100:.2f}%, per-switch cost {(COST / 2) * 100:.2f}%):",
+        {k: round(v, 3) for k, v in bt.items()},
+    )
 
     print("\nRobustness (R2 out-of-sample):")
     for label, val in rob.items():
