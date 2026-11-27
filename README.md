@@ -17,14 +17,14 @@ The main tasks I prompted Claude with were:
 
 I checked all outputs against my plan and the source data, and I am responsible for the final code and results.# Pets at Home: machine-learning signal
 
-Code for the **Machine learning signal** section of the FI4008 group investment
+Code for the Machine learning signal section of the FI4008 group investment
 recommendation on Pets at Home Group plc (LSE: PETS), Group 10, November 2026.
 
-**Question:** can public data predict whether Pets at Home will beat the FTSE 250 next month?
+Question: can public data predict whether Pets at Home will beat the FTSE 250 next month?
 
-**Answer:** no. A Ridge regression, refitted every month on past data only, did slightly
+Answer: no. A Ridge regression, refitted every month on past data only, did slightly
 worse than a simple historical-average forecast on 79 months it had never seen. Under the
-rule agreed before any results, it gets **0% weight** in the group's Sell recommendation,
+rule agreed before any results, it gets 0% weight in the group's Sell recommendation,
 which rests on the valuation.
 
 ![Walk-forward design](results/charts/01_walk_forward_design.png)
