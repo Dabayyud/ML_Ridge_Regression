@@ -1,0 +1,3 @@
+# Only for tools/rebuild_prices.py (re-downloads the raw Yahoo Finance data; needs internet).
+# Install into the project environment with:  .venv/bin/python -m pip install -r requirements-tools.txt
+yfinance

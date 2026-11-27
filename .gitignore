@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+.venv/
+_to_delete/
+data/raw/
+data/prices_monthly_rebuilt.csv

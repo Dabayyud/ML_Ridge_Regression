@@ -1,0 +1,8 @@
+{
+  "snapshot_date": "2026-11-11",
+  "inputs": {
+    "data/google_trends_gb.csv": "6f7a482979c15b53d40044569f41bd8fa79b17b2f17f9dbc056ccd81a771601b",
+    "data/ons_raw.json": "c07ccb1ada8193179d6e264dbd5d2a5566ff28726ecdcbb923350ad2f214e209",
+    "data/prices_monthly.csv": "f357a98454830bda6a0013d01ce63a0de09208864d5eae42f031d2fb3e626f7d"
+  }
+}

@@ -1,0 +1,7 @@
+,r2_oos
+"Main model (Ridge, 9 features)",-0.021984929865806135
+Lasso instead of Ridge,-0.0449820189187593
+Price features only (4),-0.02408872369095083
+Scored without Mar 2020 - Jun 2021,-0.019135439816839295
+Benchmark = FTSE 250 price index,-0.02616850375888835
+3-month horizon,-0.2761616169045604

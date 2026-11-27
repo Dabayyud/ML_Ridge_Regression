@@ -1,69 +1,94 @@
 # Pets at Home: machine-learning signal
 
-Data snapshot: 11 November 2026. Last full month in the model: October 2026.
+Code for the **Machine learning signal** section of the FI4008 group investment
+recommendation on Pets at Home Group plc (LSE: PETS), Group 10, November 2026.
 
-## Finding
+**Question:** can public data predict whether Pets at Home will beat the FTSE 250 next month?
 
-A Ridge regression on nine public inputs does **not** predict next month's return on
-Pets at Home relative to the FTSE 250. Under the rule agreed before the results were
-seen, the model gets **no weight** in the Buy/Sell call.
+**Answer:** no. A Ridge regression, refitted every month on past data only, did slightly
+worse than a simple historical-average forecast on 79 months it had never seen. Under the
+rule agreed before any results, it gets **0% weight** in the group's Sell recommendation,
+which rests on the valuation.
 
-| Measure (79 unseen months, Apr 2020 to Oct 2026) | Ridge | Plain OLS | Historical average |
-| --- | --- | --- | --- |
-| Out-of-sample R² vs historical average | −2.2% | −60.4% | 0 (benchmark) |
-| RMSE | 9.34% | 11.71% | 9.24% |
-| Months with direction right | 44.3% | 41.8% | 45.6% |
+![Walk-forward design](results/charts/01_walk_forward_design.png)
 
-- 90% bootstrap range for Ridge R²: −5.5% to −0.1%.
-- Diebold–Mariano p = 0.94; Clark–West p = 0.92 (no evidence Ridge beats the average).
-- Backtest (hold PETS when forecast > 0, else the index, 0.5% round-trip cost):
-  −0.60 cumulative log excess return, against −0.46 for always holding PETS.
-- Forecast for November 2026: −0.39% excess return. Actual to 11 November: +8.7%.
-- 12-month tilt: −3.7%, with a one-standard-deviation band of ±32%.
+## Results (79 scored forecasts, target months Apr 2020 to Oct 2026)
 
-## Run it
+| Measure | Ridge | OLS | Historical mean |
+|---|---|---|---|
+| Out-of-sample R² vs historical mean | −2.2% | −60.4% | 0 (benchmark) |
+| 90% bootstrap interval (Ridge) | −5.5% to −0.1% | | |
+| RMSE (monthly) | 9.34% | 11.71% | 9.24% |
+| Direction right | 35/79 | 33/79 | 36/79 |
+| Diebold–Mariano / Clark–West p (vs mean) | 0.94 / 0.92 | | |
 
+- Pets at Home beat the index in 34 of 79 months, so always predicting "underperform" was right 45 times (57%).
+- Ridge chose the strongest penalty on offer (10,000) in 39 of 79 windows; its forecasts moved by 0.7% a month while actual excess returns moved by 9.2%.
+- Robustness, all negative: Lasso −4.5%, price inputs only −2.4%, without Mar 2020–Jun 2021 −1.9%, FTSE 250 price index as benchmark −2.6%, 3-month horizon −27.6%.
+- Switching between PETS and the ETF on the forecast's sign: −0.60 cumulative log excess return, against −0.46 for always holding PETS (0.25% per switch).
+- Power check: a planted signal with true correlation 0.3 gives a positive R² in only about a third of runs, so the result means **no usable evidence**, not proof that none exists.
+
+![Cumulative gain](results/charts/11_cumulative_gain.png)
+![Backtest](results/charts/18_backtest.png)
+
+## Reproduce (macOS)
+
+```bash
+brew install uv          # once; or have Python 3.11+ installed
+cd Pets_ML
+./reproduce.sh           # about 2 minutes: environment, model, 17 charts, tests
+./reproduce.sh --power   # also reruns the power check (about 30-40 minutes)
 ```
-pip install pandas numpy scikit-learn scipy matplotlib
-python pets_ml_model.py     # model, tests, robustness -> results/
-python make_charts.py       # three PNG charts -> results/
-python power_check.py       # optional, 15-20 minutes
+
+The first run creates a private Python 3.13 environment in `.venv/` and installs the exact
+package versions in `requirements-lock.txt`. Every later run reuses it. The script then runs
+the model, draws the charts and runs the tests, which must all print `PASS`.
+
+To run steps by hand instead:
+
+```bash
+.venv/bin/python pets_ml_model.py          # -> results/
+.venv/bin/python make_charts.py            # -> results/charts/
+.venv/bin/python tests/test_pipeline.py    # leak checks, data checksums, every report number
 ```
 
-## Choices, reasons and drawbacks
+Nothing is random except the bootstrap and the power check, which use seed 0.
+The data are a frozen snapshot from 11 Nov 2026 (`MANIFEST.json` holds their checksums).
 
-| Choice | Reason | Drawback |
-| --- | --- | --- |
-| Target: next month's log excess return over the FTSE 250 | Matches the committee's question (this share or the market); gives 139 observations | Decision horizon is 12 months; a 1-month result only tilts it |
-| Ridge regression | Interpretable; penalty controls overfitting with few observations and correlated inputs | Linear only; shrinks true effects too |
-| Penalty chosen by time-series cross-validation inside each window | No future data used for tuning | Noisy with 60–138 months; hit the top of the grid in 39 of 79 windows |
-| Walk-forward, 60-month first window | Mimics real-time forecasting | Only 79 test months, starting in the pandemic |
-| Benchmark forecast: expanding historical mean | Standard in the literature (Campbell and Thompson, 2008) | A low bar in absolute terms |
-| Index: iShares FTSE 250 ETF total return | Dividends counted on both sides | Net of the ETF's fee, which slightly flatters PETS |
-| Yahoo Finance prices, dividends added back by hand | Free and reproducible; Yahoo's own adjusted close under-adjusts London dividends | Not an institutional source; check against LSEG if available |
-| ONS retail sales and CPI, lagged one month | Released in the third week of the following month | Revised figures, not first releases |
-| Google Trends "puppy", year-on-year change | Timely pet-demand proxy; yearly change removes seasonality and index rescaling | Search interest is not spending; values are rounded integers |
-| CMA announcement dummy | The vets inquiry moved the shares | Seven events, all after September 2023 |
+## Method
 
-## Differences from the written plan
+| Step | Choice |
+|---|---|
+| Target | Next month's log total return of PETS minus the iShares FTSE 250 ETF (MIDD.L) |
+| Sample | 139 feature months, Mar 2015 – Sep 2026 (targets Apr 2015 – Oct 2026) |
+| Inputs (9) | This month's excess return; 12-month momentum (skipping this month); 63-day PETS volatility; FTSE 250 3-month return; UK retail sales growth and CPI (lagged one month to publication); GBP/USD 3-month change; yearly change in UK Google searches for "puppy"; CMA vets-inquiry announcement months |
+| Model | Ridge regression on standardised inputs; penalty picked by 5-fold time-series cross-validation inside each training window |
+| Testing | Expanding window: the first model trains on Mar 2015 – Feb 2020 and predicts Apr 2020; one month is added each time; 79 forecasts |
+| Comparisons | Plain OLS; expanding historical mean |
+| Statistics | Out-of-sample R², RMSE, MAE, direction; Diebold–Mariano; Clark–West; bootstrap interval |
+| Decision rule (set in advance) | 25% weight if R² > 0 and significant; supporting evidence if R² > 0 only; 0% otherwise |
 
-- Consumer confidence dropped: the free OECD series on FRED stops in January 2024.
-- Benchmark is the FTSE 250 ETF total return, not the ^FTMC price index (kept as a robustness row).
-- Macro lag is one month, not two, after checking ONS release dates.
-- Google Trends uses a 12-month change, not 3-month, to remove seasonality.
-- The pandemic is handled as a robustness check, not as a model input.
-- Clark–West test, bootstrap range and a planted-signal power check added.
+## Files
 
-## Limits
+| Path | What it is |
+|---|---|
+| `reproduce.sh` | One command: builds the environment, runs everything, runs the tests |
+| `pets_ml_model.py` | The model, tests, backtest, robustness and live forecast |
+| `make_charts.py` | All charts, drawn from the files in `results/` |
+| `tests/test_pipeline.py` | No look-ahead; shuffled-target placebo; data checksums; every report number |
+| `data/` | Frozen inputs; see `DATA_SOURCES.md` |
+| `requirements-lock.txt` | Exact versions of every package (generated from `requirements.txt` with `uv pip compile`) |
+| `requirements-tools.txt` | Extra package for `tools/rebuild_prices.py` only |
+| `docs/report_ml_section.md` | The report's ML sections, matching the numbers this code produces |
+| `tools/rebuild_prices.py` | Re-downloads the daily Yahoo data and rebuilds the price file (needs internet; not yet run) |
+| `results/results.json` | Every headline number |
+| `results/walk_forward_forecasts.csv` | One row per forecast with its dates and training window, plus the live Nov 2026 row |
+| `results/significance_by_month.csv` | The 79 monthly squared errors and loss differentials behind R², Diebold–Mariano and Clark–West |
+| `results/significance_summary.csv` | Mean, sd, standard error, test statistic and one-sided p-value for each test |
+| `CHANGELOG.md` | Changes from the plan, and known limitations |
 
-- The planted-signal check shows low power: even a true correlation of 0.3 gave a
-  positive out-of-sample R² in about a third of runs. Read the result as "no usable
-  evidence", not "proof of no predictability".
-- One share, one horizon, public data only.
+## Limitations
 
-## Sources
-
-- Yahoo Finance: PETS.L, MIDD.L, ^FTMC, GBPUSD=X (daily, downloaded 11 Nov 2026).
-- ONS time series D7G7 (CPI annual rate, released 21 Oct 2026) and J5EK (retail sales volume, released 23 Oct 2026).
-- Google Trends, United Kingdom, "puppy" and "pet insurance", Jan 2013 to Oct 2026 (downloaded 11 Nov 2026).
-- CMA, Veterinary services for household pets case page (gov.uk).
+79 test months give the test low power; ONS figures are today's revised values; seven CMA
+events are too few to learn from; one share, one-month horizon, public data only. Code-level
+limitations are listed in `CHANGELOG.md`.
