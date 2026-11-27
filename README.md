@@ -1,8 +1,12 @@
 ## Acknowledgement of Generative AI Use
 
-I acknowledge the use of Claude Opus 5.5 (Anthropic, https://claude.ai) to help write the code in this repository between 13 November 2026 and 27 November 2026. Using generative AI was permitted for this course.
+I acknowledge the use of Claude Opus 5.5 to help write the code in this repository between 10 November 2026 and 27 November 2026. 
 
-I planned the codebase in detail before any code was written. The plan set out the prediction target (PETS excess return over the FTSE 250 ETF), the nine input features and their publication lags, the Ridge model with time-series cross-validation, the expanding-window walk-forward test, the benchmarks, the statistical tests and the 0%/25% decision rule. I gave this plan to Claude as specifications, and Claude wrote code from them. I reviewed every piece of output. I corrected and refined the code by re-prompting with specific changes and by editing files myself. Every methodological and implementation decision, down to small details, was mine and was based on my own research. Claude did not choose the approach. It turned my decisions into working code under my direction.
+Using generative AI was permitted for this course.
+
+I planed the codebase in detail before any code was written. The plan set out the prediction target (PETS excess return over the FTSE 250 ETF), the nine input features and their publication lags, the Ridge model with time-series cross-validation the expanding-window walk-forward test the benchmarks the statistical tests and the 0%/25% decision rule (pre-determined with group). I gave this plan to Claude as specifications and it wrote code from them. I reviewed every piece of output. I corrected and refined the code by re-prompting with specific changes and by editing files myself. Every methodological and implementation decision down to small details is mine and was based on my own research. Claude did not choose the approach. It was under my direction.
+
+I used Claude as an accelerant for writing code and the jusgement behind it is my own. 
 
 The main tasks I prompted Claude with were:
 - Building the data pipeline and feature construction in `pets_ml_model.py` to my feature list and lag rules
